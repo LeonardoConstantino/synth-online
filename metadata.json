@@ -1,0 +1,6 @@
+{
+  "name": "Synth Online",
+  "description": "Sintetizador online contemporâneo com modos Leigo e Expert, síntese Web Audio polyphonic com Tone.js e persistência IndexedDB.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
