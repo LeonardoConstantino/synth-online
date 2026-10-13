@@ -1,0 +1,71 @@
+name: Deploy Synth Online to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+# Permissões necessárias para publicar no GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Permite apenas um deploy concorrente por vez, enfileirando execuções
+concurrency:
+  group: 'pages'
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build & Prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar dependências
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Executar Lint / Verificação de tipos
+        run: npm run lint
+
+      - name: Compilar projeto para produção (Vite)
+        env:
+          GITHUB_ACTIONS: 'true'
+        run: npm run build
+
+      - name: Garantir fallback 404 para GitHub Pages
+        run: |
+          if [ -f dist/index.html ] && [ ! -f dist/404.html ]; then
+            cp dist/index.html dist/404.html
+          fi
+
+      - name: Upload de artefato do GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publicar no GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
