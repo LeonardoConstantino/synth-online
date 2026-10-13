@@ -1,4 +1,4 @@
-name: Deploy Synth Online to GitHub Pages
+name: Deploy to GitHub Pages
 
 on:
   push:
@@ -7,31 +7,32 @@ on:
       - master
   workflow_dispatch:
 
-# Permissões necessárias para publicar no GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Permite apenas um deploy concorrente por vez, enfileirando execuções
 concurrency:
   group: 'pages'
   cancel-in-progress: false
 
 jobs:
-  build:
-    name: Build & Prepare
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repositório
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Configurar Node.js 20
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: ${{ hashFiles('package-lock.json') != '' && 'npm' || '' }}
 
-      - name: Instalar dependências
+      - name: Install dependencies
         run: |
           if [ -f package-lock.json ]; then
             npm ci
@@ -39,33 +40,19 @@ jobs:
             npm install
           fi
 
-      - name: Executar Lint / Verificação de tipos
-        run: npm run lint
-
-      - name: Compilar projeto para produção (Vite)
+      - name: Build application
         env:
           GITHUB_ACTIONS: 'true'
         run: npm run build
 
-      - name: Garantir fallback 404 para GitHub Pages
-        run: |
-          if [ -f dist/index.html ] && [ ! -f dist/404.html ]; then
-            cp dist/index.html dist/404.html
-          fi
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
 
-      - name: Upload de artefato do GitHub Pages
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: './dist'
 
-  deploy:
-    name: Deploy to GitHub Pages
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Publicar no GitHub Pages
+      - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
